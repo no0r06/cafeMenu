@@ -506,51 +506,35 @@
         </div>
     </div>
 <script>
-    // Wait for Supabase to load
+    console.log('Admin page loading...');
+    
+    // Wait for page to load
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        
         // Initialize Supabase
         const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
         
-        // Check if supabase exists in window
-        if (window.supabase) {
-            initApp(window.supabase.createClient(supabaseUrl, supabaseKey));
-        } else {
-            // Wait a bit if library is still loading
-            setTimeout(() => {
-                if (window.supabase) {
-                    initApp(window.supabase.createClient(supabaseUrl, supabaseKey));
-                } else {
-                    alert('Supabase library failed to load. Refresh page.');
-                }
-            }, 1000);
-        }
-    });
-
-    function initApp(supabase) {
-        console.log('Supabase initialized:', supabase);
+        console.log('Creating Supabase client...');
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        console.log('Supabase client created:', supabase);
         
-        // SIMPLE TEST LOGIN - bypass auth for now
+        // Store globally for delete function
+        window.supabaseClient = supabase;
+        
+        // === SIMPLE LOGIN - NO AUTHENTICATION ===
         document.getElementById('loginBtn').addEventListener('click', function() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
+            console.log('Login button clicked');
             
-            console.log('Test login attempt with:', email);
-            
-            if (!email || !password) {
-                alert('Enter email and password');
-                return;
-            }
-            
-            // FOR NOW: Just show dashboard without real auth
-            // We'll fix auth later
+            // Just show dashboard - NO password check
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             
             // Load menu items
-            loadMenuItems(supabase);
+            loadMenuItems();
             
-            alert('NOTE: Authentication is disabled for testing.\nYou can now manage the menu.');
+            console.log('Dashboard shown');
         });
         
         // Logout
@@ -559,26 +543,31 @@
             document.getElementById('loginScreen').classList.remove('hidden');
         });
         
-        // Load menu items function
-        async function loadMenuItems(supabaseClient) {
+        // Load menu items
+        async function loadMenuItems() {
+            console.log('Loading menu items...');
+            const loading = document.getElementById('loading');
+            const table = document.getElementById('itemsTable');
+            const tableBody = document.getElementById('itemsTableBody');
+            
             try {
-                console.log('Loading menu items...');
-                const { data, error } = await supabaseClient
+                const { data, error } = await supabase
                     .from('menu_items')
                     .select('*')
                     .order('item_name');
-
-                if (error) throw error;
                 
-                const tableBody = document.getElementById('itemsTableBody');
-                const loading = document.getElementById('loading');
-                const table = document.getElementById('itemsTable');
+                if (error) {
+                    console.error('Supabase error:', error);
+                    loading.innerHTML = 'Database error: ' + error.message;
+                    return;
+                }
                 
+                console.log('Menu items loaded:', data);
                 loading.style.display = 'none';
                 table.classList.remove('hidden');
                 
                 if (!data || data.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">No menu items yet. Add your first item!</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#666;">No menu items yet. Add your first item above! ☝️</td></tr>';
                     return;
                 }
                 
@@ -587,14 +576,14 @@
                         <td>
                             ${item.image_url ? 
                                 `<img src="${item.image_url}" alt="${item.item_name}" style="width:50px;height:50px;object-fit:cover;border-radius:5px;">` : 
-                                '<i class="fas fa-image" style="color:#ccc;font-size:24px;"></i>'
+                                '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:5px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-image" style="color:#ccc;"></i></div>'
                             }
                         </td>
-                        <td><strong>${item.item_name || 'Unnamed'}</strong></td>
-                        <td>$${parseFloat(item.price || 0).toFixed(2)}</td>
-                        <td>${item.category_id || 'No category'}</td>
+                        <td><strong>${item.item_name || 'Unnamed Item'}</strong><br><small style="color:#666;">${item.description || ''}</small></td>
+                        <td><span style="font-weight:bold;color:#1A5D1A;">$${parseFloat(item.price || 0).toFixed(2)}</span></td>
+                        <td><span class="category-tag">${item.category_id === '1' ? 'Food' : item.category_id === '2' ? 'Drinks' : item.category_id === '3' ? 'Desserts' : 'Other'}</span></td>
                         <td>
-                            <button class="action-btn delete-btn" onclick="deleteMenuItem(${item.id}, supabase)">
+                            <button class="action-btn delete-btn" onclick="deleteItem(${item.id})">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         </td>
@@ -603,13 +592,14 @@
                 
             } catch (error) {
                 console.error('Load error:', error);
-                document.getElementById('loading').innerHTML = 'Error: ' + error.message;
+                loading.innerHTML = 'Error loading: ' + error.message;
             }
         }
         
         // Add item form
         document.getElementById('addItemForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            console.log('Form submitted');
             
             const itemName = document.getElementById('itemName').value;
             const itemPrice = document.getElementById('itemPrice').value;
@@ -617,11 +607,13 @@
             const itemDescription = document.getElementById('itemDescription').value;
             
             if (!itemName || !itemPrice || !itemCategory) {
-                alert('Please fill required fields');
+                alert('❌ Please fill: Item Name, Price, and Category');
                 return;
             }
             
             try {
+                console.log('Adding item:', { itemName, itemPrice, itemCategory });
+                
                 const { error } = await supabase
                     .from('menu_items')
                     .insert([{
@@ -631,70 +623,65 @@
                         description: itemDescription,
                         image_url: null
                     }]);
-
-                if (error) throw error;
                 
-                alert('✅ Item added!');
+                if (error) {
+                    console.error('Insert error:', error);
+                    alert('❌ Database error: ' + error.message);
+                    return;
+                }
+                
+                alert('✅ Item added successfully!');
                 document.getElementById('addItemForm').reset();
-                loadMenuItems(supabase);
+                loadMenuItems();
+                
+                // Also refresh main site
+                console.log('Item added to database');
                 
             } catch (error) {
+                console.error('Submit error:', error);
                 alert('❌ Error: ' + error.message);
             }
         });
         
-        // Make supabase available globally for delete function
-        window.supabaseClient = supabase;
-    }
-
-    // Delete function (global)
-    window.deleteMenuItem = async function(id, supabaseClient) {
-        if (!confirm('Delete this item?')) return;
+        // Load items on dashboard show
+        window.loadMenuItems = loadMenuItems;
+    });
+    
+    // Delete function
+    async function deleteItem(id) {
+        if (!confirm('Delete this menu item?')) return;
         
-        const client = supabaseClient || window.supabaseClient;
+        console.log('Deleting item:', id);
         
         try {
-            const { error } = await client
+            const supabase = window.supabaseClient;
+            const { error } = await supabase
                 .from('menu_items')
                 .delete()
                 .eq('id', id);
-
-            if (error) throw error;
             
-            alert('✅ Item deleted');
+            if (error) {
+                alert('❌ Delete failed: ' + error.message);
+                return;
+            }
             
-            // Reload items
-            const { data } = await client
-                .from('menu_items')
-                .select('*')
-                .order('item_name');
-                
-            const tableBody = document.getElementById('itemsTableBody');
-            if (data && data.length > 0) {
-                tableBody.innerHTML = data.map(item => `
-                    <tr>
-                        <td>
-                            ${item.image_url ? 
-                                `<img src="${item.image_url}" style="width:50px;height:50px;object-fit:cover;border-radius:5px;">` : 
-                                '<i class="fas fa-image" style="color:#ccc;font-size:24px;"></i>'
-                            }
-                        </td>
-                        <td><strong>${item.item_name}</strong></td>
-                        <td>$${parseFloat(item.price).toFixed(2)}</td>
-                        <td>${item.category_id || ''}</td>
-                        <td>
-                            <button class="action-btn delete-btn" onclick="deleteMenuItem(${item.id}, supabaseClient)">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
+            alert('✅ Item deleted!');
+            
+            // Reload the items
+            if (window.loadMenuItems) {
+                window.loadMenuItems();
             } else {
-                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">No menu items</td></tr>';
+                location.reload();
             }
             
         } catch (error) {
-            alert('❌ Delete failed: ' + error.message);
+            console.error('Delete error:', error);
+            alert('❌ Error: ' + error.message);
         }
     }
+    
+    // Make delete available globally
+    window.deleteItem = deleteItem;
+    
+    console.log('Script loaded successfully');
 </script>
