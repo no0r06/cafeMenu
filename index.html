@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cafe Menu</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .menu-item { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; align-items: center; }
+        .menu-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px; }
+        .menu-item h3 { margin: 0 0 5px 0; }
+        .menu-item p { margin: 0 0 8px 0; color: #555; }
+        .price { font-weight: bold; color: #2ecc71; font-size: 1.2em; }
+        .category { display: inline-block; background: #f1f1f1; padding: 3px 8px; border-radius: 12px; font-size: 0.9em; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Our Menu</h1>
+    <div id="menu"></div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function loadMenu() {
+            const { data, error } = await supabase
+                .from('menu_items')
+                .select(`
+                    item_name,
+                    price,
+                    description,
+                    image_url,
+                    categories (name)
+                `)
+                .order('item_name');
+            
+            if (error) {
+                console.error('Error loading menu:', error);
+                document.getElementById('menu').innerHTML = '<p>Menu loading failed.</p>';
+            } else {
+                displayMenu(data);
+            }
+        }
+
+        function displayMenu(items) {
+            const container = document.getElementById('menu');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p>No menu items found.</p>';
+                return;
+            }
+            
+            container.innerHTML = items.map(item => `
+                <div class="menu-item">
+                    ${item.image_url ? `<img src="${item.image_url}" alt="${item.item_name}">` : '<div style="width:80px; height:80px; background:#eee; border-radius:8px; margin-right:15px;"></div>'}
+                    <div>
+                        <h3>${item.item_name} <span class="price">$${item.price}</span></h3>
+                        <p>${item.description || ''}</p>
+                        ${item.categories ? `<span class="category">${item.categories.name}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load menu when page opens
+        loadMenu();
+    </script>
+</body>
+</html>
