@@ -690,6 +690,39 @@
                     loading.innerHTML = '<div style="color:var(--danger);text-align:center;padding:30px;"><i class="fas fa-exclamation-circle"></i> Error loading items</div>';
                 }
             }
+            // Replace your login function with REAL authentication
+document.getElementById('loginBtn').addEventListener('click', async function() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        alert('Enter email and password');
+        return;
+    }
+    
+    try {
+        // REAL Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (error) {
+            console.error('Login error:', error);
+            alert('Login failed. Check email/password and ensure Email Auth is enabled in Supabase.');
+            return;
+        }
+        
+        console.log('Login success!');
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadMenuItems();
+        
+    } catch (error) {
+        console.error('Catch error:', error);
+        alert('Error: ' + error.message);
+    }
+});
             
             // === IMAGE UPLOAD CODE ===
             const imageInput = document.getElementById('imageInput');
