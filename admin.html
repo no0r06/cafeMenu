@@ -505,168 +505,242 @@
             </div>
         </div>
     </div>
+<script>
+    const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    <script>
-        const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-        // Basic login (for demo - replace with real auth later)
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
+    // REAL Supabase Authentication
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        if (!email || !password) {
+            showMessage('loginMessage', 'Please enter email and password', 'error');
+            return;
+        }
+        
+        try {
+            // Sign in with Supabase Auth
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
             
-            // Simple demo login - replace with Supabase Auth
-            if (email && password) {
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                loadMenuItems();
+            if (error) throw error;
+            
+            // Check if user is admin
+            const { data: adminData, error: adminError } = await supabase
+                .from('admin_users')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+                
+            if (adminError || !adminData || adminData.role !== 'admin') {
+                throw new Error('Unauthorized: Admin access only');
+            }
+            
+            // Success - show dashboard
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            loadMenuItems();
+            
+        } catch (error) {
+            showMessage('loginMessage', error.message, 'error');
+        }
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+    });
+
+    // Check if already logged in on page load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            // Verify admin role
+            supabase
+                .from('admin_users')
+                .select('role')
+                .eq('id', session.user.id)
+                .single()
+                .then(({ data }) => {
+                    if (data && data.role === 'admin') {
+                        document.getElementById('loginScreen').classList.add('hidden');
+                        document.getElementById('dashboard').classList.remove('hidden');
+                        loadMenuItems();
+                    }
+                });
+        }
+    });
+
+    // Image upload preview
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+
+    imageUploadArea.addEventListener('click', () => imageInput.click());
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Load menu items for table
+    async function loadMenuItems() {
+        const loading = document.getElementById('loading');
+        const table = document.getElementById('itemsTable');
+        const tableBody = document.getElementById('itemsTableBody');
+        
+        try {
+            const { data, error } = await supabase
+                .from('menu_items')
+                .select(`
+                    id,
+                    item_name,
+                    price,
+                    description,
+                    image_url,
+                    categories (name)
+                `)
+                .order('item_name');
+
+            if (error) throw error;
+
+            loading.style.display = 'none';
+            table.classList.remove('hidden');
+
+            if (data && data.length > 0) {
+                tableBody.innerHTML = data.map(item => `
+                    <tr>
+                        <td>
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" alt="${item.item_name}" style="width:50px;height:50px;object-fit:cover;border-radius:5px;">` : 
+                                '<i class="fas fa-image" style="color:#ccc;"></i>'
+                            }
+                        </td>
+                        <td>${item.item_name}</td>
+                        <td>$${item.price.toFixed(2)}</td>
+                        <td>${item.categories?.name || 'Uncategorized'}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="editItem(${item.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="deleteItem(${item.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
             } else {
-                showMessage('loginMessage', 'Please enter email and password', 'error');
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">No menu items found</td></tr>';
             }
-        });
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            document.getElementById('dashboard').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-        });
-
-        // Image upload preview
-        const imageInput = document.getElementById('imageInput');
-        const imagePreview = document.getElementById('imagePreview');
-        const imageUploadArea = document.getElementById('imageUploadArea');
-
-        imageUploadArea.addEventListener('click', () => imageInput.click());
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    imagePreview.style.display = 'block';
-                }
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Load menu items for table
-        async function loadMenuItems() {
-            const loading = document.getElementById('loading');
-            const table = document.getElementById('itemsTable');
-            const tableBody = document.getElementById('itemsTableBody');
             
-            try {
-                const { data, error } = await supabase
-                    .from('menu_items')
-                    .select(`
-                        id,
-                        item_name,
-                        price,
-                        description,
-                        image_url,
-                        categories (name)
-                    `)
-                    .order('item_name');
-
-                if (error) throw error;
-
-                loading.style.display = 'none';
-                table.classList.remove('hidden');
-
-                if (data && data.length > 0) {
-                    tableBody.innerHTML = data.map(item => `
-                        <tr>
-                            <td>
-                                ${item.image_url ? 
-                                    `<img src="${item.image_url}" alt="${item.item_name}" style="width:50px;height:50px;object-fit:cover;border-radius:5px;">` : 
-                                    '<i class="fas fa-image" style="color:#ccc;"></i>'
-                                }
-                            </td>
-                            <td>${item.item_name}</td>
-                            <td>$${item.price.toFixed(2)}</td>
-                            <td>${item.categories?.name || 'Uncategorized'}</td>
-                            <td>
-                                <button class="action-btn edit-btn" onclick="editItem(${item.id})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="action-btn delete-btn" onclick="deleteItem(${item.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">No menu items found</td></tr>';
-                }
-                
-            } catch (error) {
-                console.error('Error loading items:', error);
-                loading.innerHTML = 'Error loading items. Please try again.';
-            }
+        } catch (error) {
+            console.error('Error loading items:', error);
+            loading.innerHTML = 'Error loading items. Please try again.';
         }
+    }
 
-        // Form submission
-        document.getElementById('addItemForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    // Form submission - ADD NEW ITEM
+    document.getElementById('addItemForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const itemName = document.getElementById('itemName').value;
+        const itemPrice = parseFloat(document.getElementById('itemPrice').value);
+        const itemCategory = document.getElementById('itemCategory').value;
+        const itemDescription = document.getElementById('itemDescription').value;
+        const imageFile = document.getElementById('imageInput').files[0];
+        
+        try {
+            let imageUrl = '';
             
-            const itemName = document.getElementById('itemName').value;
-            const itemPrice = parseFloat(document.getElementById('itemPrice').value);
-            const itemCategory = document.getElementById('itemCategory').value;
-            const itemDescription = document.getElementById('itemDescription').value;
+            // Upload image to Supabase Storage if exists
+            if (imageFile) {
+                const fileName = `${Date.now()}-${imageFile.name}`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('menu-images')
+                    .upload(fileName, imageFile);
+                    
+                if (uploadError) throw uploadError;
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('menu-images')
+                    .getPublicUrl(fileName);
+                    
+                imageUrl = urlData.publicUrl;
+            }
             
-            // For now, image upload is simplified
-            // In real app, upload to Supabase Storage first
-            const imageUrl = imagePreview.src.startsWith('data:') ? '' : imagePreview.src;
+            // Insert into database
+            const { data, error } = await supabase
+                .from('menu_items')
+                .insert([
+                    {
+                        item_name: itemName,
+                        price: itemPrice,
+                        description: itemDescription,
+                        category_id: itemCategory,
+                        image_url: imageUrl || null
+                    }
+                ]);
+
+            if (error) throw error;
+
+            showMessage('formMessage', '✅ Item added successfully!', 'success');
+            document.getElementById('addItemForm').reset();
+            imagePreview.style.display = 'none';
+            loadMenuItems();
             
+        } catch (error) {
+            console.error('Error adding item:', error);
+            showMessage('formMessage', '❌ Error: ' + error.message, 'error');
+        }
+    });
+
+    // Helper function for messages
+    function showMessage(elementId, text, type) {
+        const element = document.getElementById(elementId);
+        element.textContent = text;
+        element.className = `message ${type}`;
+        element.classList.remove('hidden');
+        
+        setTimeout(() => {
+            element.classList.add('hidden');
+        }, 5000);
+    }
+
+    // Placeholder functions for edit/delete
+    function editItem(id) {
+        alert('Edit function for item ' + id + ' - To be implemented');
+    }
+
+    async function deleteItem(id) {
+        if (confirm('Are you sure you want to delete this item?')) {
             try {
-                const { data, error } = await supabase
+                const { error } = await supabase
                     .from('menu_items')
-                    .insert([
-                        {
-                            item_name: itemName,
-                            price: itemPrice,
-                            description: itemDescription,
-                            category_id: itemCategory,
-                            image_url: imageUrl || null
-                        }
-                    ]);
-
+                    .delete()
+                    .eq('id', id);
+                    
                 if (error) throw error;
-
-                showMessage('formMessage', 'Item added successfully!', 'success');
-                document.getElementById('addItemForm').reset();
-                imagePreview.style.display = 'none';
+                
+                showMessage('tableMessage', '✅ Item deleted successfully!', 'success');
                 loadMenuItems();
-                
             } catch (error) {
-                console.error('Error adding item:', error);
-                showMessage('formMessage', 'Error adding item: ' + error.message, 'error');
-            }
-        });
-
-        function showMessage(elementId, text, type) {
-            const element = document.getElementById(elementId);
-            element.textContent = text;
-            element.className = `message ${type}`;
-            element.classList.remove('hidden');
-            
-            setTimeout(() => {
-                element.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Placeholder functions for edit/delete
-        function editItem(id) {
-            alert('Edit function for item ' + id + ' - To be implemented');
-        }
-
-        function deleteItem(id) {
-            if (confirm('Are you sure you want to delete this item?')) {
-                alert('Delete function for item ' + id + ' - To be implemented');
+                showMessage('tableMessage', '❌ Error deleting item', 'error');
             }
         }
-    </script>
-</body>
-</html>
+    }
+</script>
+  
