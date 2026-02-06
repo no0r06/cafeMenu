@@ -1,68 +1,115 @@
-<!DOCTYPE html>
-<html>
+
+   <!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Cafe Menu</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bustan Cafe | Fresh & Green</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-        .menu-item { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; align-items: center; }
-        .menu-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px; }
-        .menu-item h3 { margin: 0 0 5px 0; }
-        .menu-item p { margin: 0 0 8px 0; color: #555; }
-        .price { font-weight: bold; color: #2ecc71; font-size: 1.2em; }
-        .category { display: inline-block; background: #f1f1f1; padding: 3px 8px; border-radius: 12px; font-size: 0.9em; margin-left: 10px; }
+        /* CSS will be added in next step */
     </style>
 </head>
 <body>
-    <h1>Our Menu</h1>
-    <div id="menu"></div>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <img src="https://via.placeholder.com/150x50/1A5D1A/FFFFFF?text=BUSTAN+CAFE" alt="Bustan Cafe Logo" id="logo">
+            </div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="admin.html" class="admin-btn"><i class="fas fa-lock"></i> Admin</a></li>
+            </ul>
+            <div class="hamburger">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Fresh Taste of Nature</h1>
+            <p>Organic ingredients, crafted with passion in the heart of the city</p>
+            <a href="#menu" class="btn">View Menu</a>
+        </div>
+    </section>
+
+    <!-- Menu Section -->
+    <section id="menu" class="menu-section">
+        <div class="container">
+            <h2>Our Menu</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search menu items...">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="category-filters">
+                <button class="filter-btn active" data-category="all">All</button>
+                <button class="filter-btn" data-category="Food">Food</button>
+                <button class="filter-btn" data-category="Drinks">Drinks</button>
+                <button class="filter-btn" data-category="Desserts">Desserts</button>
+            </div>
+            <div class="menu-grid" id="menuContainer">
+                <!-- Menu items loaded from Supabase -->
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <div class="container">
+            <h2>Our Story</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>Bustan Cafe brings the freshness of a garden to your table. Inspired by nature's bounty, we serve dishes crafted from locally sourced, organic ingredients.</p>
+                    <p>Every cup of coffee, every meal, and every smile shared here is a reflection of our commitment to quality and sustainability.</p>
+                </div>
+                <div class="about-image">
+                    <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Cafe Interior">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2>Visit Us</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <p><i class="fas fa-map-marker-alt"></i> 123 Green Street, Beirut, Lebanon</p>
+                    <p><i class="fas fa-phone"></i> +961 1 123 456</p>
+                    <p><i class="fas fa-clock"></i> Open Daily: 7:00 AM - 11:00 PM</p>
+                    <div class="social">
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-tripadvisor"></i></a>
+                    </div>
+                </div>
+                <div class="map">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3310.69866574185!2d35.50185931521094!3d33.90214428064423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x151f17215880a78f%3A0x729182bae99836b4!2sBeirut%2C%20Lebanon!5e0!3m2!1sen!2s!4v1629876543210!5m2!1sen!2s" width="100%" height="250" style="border:0; border-radius:10px;" allowfullscreen="" loading="lazy"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2023 Bustan Cafe. All rights reserved.</p>
+    </footer>
+
     <script>
+        // Supabase Configuration
         const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        async function loadMenu() {
-            const { data, error } = await supabase
-                .from('menu_items')
-                .select(`
-                    item_name,
-                    price,
-                    description,
-                    image_url,
-                    categories (name)
-                `)
-                .order('item_name');
-            
-            if (error) {
-                console.error('Error loading menu:', error);
-                document.getElementById('menu').innerHTML = '<p>Menu loading failed.</p>';
-            } else {
-                displayMenu(data);
-            }
-        }
-
-        function displayMenu(items) {
-            const container = document.getElementById('menu');
-            if (!items || items.length === 0) {
-                container.innerHTML = '<p>No menu items found.</p>';
-                return;
-            }
-            
-            container.innerHTML = items.map(item => `
-                <div class="menu-item">
-                    ${item.image_url ? `<img src="${item.image_url}" alt="${item.item_name}">` : '<div style="width:80px; height:80px; background:#eee; border-radius:8px; margin-right:15px;"></div>'}
-                    <div>
-                        <h3>${item.item_name} <span class="price">$${item.price}</span></h3>
-                        <p>${item.description || ''}</p>
-                        ${item.categories ? `<span class="category">${item.categories.name}</span>` : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Load menu when page opens
-        loadMenu();
+        // Your existing JavaScript code will go here
     </script>
 </body>
-</html>
+</html> 
