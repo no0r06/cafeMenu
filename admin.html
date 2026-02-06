@@ -511,44 +511,52 @@
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     // REAL Supabase Authentication
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+    
+         // TEMPORARY SIMPLE LOGIN - replace your current login function
+document.getElementById('loginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        alert('Enter email/password');
+        return;
+    }
+    
+    try {
+        // Try login without admin check first
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
         
-        if (!email || !password) {
-            showMessage('loginMessage', 'Please enter email and password', 'error');
+        if (error) {
+            alert('Login error: ' + error.message);
             return;
         }
         
-        try {
-            // Sign in with Supabase Auth
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
+        alert('Login successful! User ID: ' + data.user.id);
+        
+        // Now check if admin
+        const { data: adminData } = await supabase
+            .from('admin_users')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
             
-            if (error) throw error;
-            
-            // Check if user is admin
-            const { data: adminData, error: adminError } = await supabase
-                .from('admin_users')
-                .select('role')
-                .eq('id', data.user.id)
-                .single();
-                
-            if (adminError || !adminData || adminData.role !== 'admin') {
-                throw new Error('Unauthorized: Admin access only');
-            }
-            
-            // Success - show dashboard
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            loadMenuItems();
-            
-        } catch (error) {
-            showMessage('loginMessage', error.message, 'error');
+        if (!adminData) {
+            alert('User not in admin table');
+            return;
         }
-    });
+        
+        // Show dashboard
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadMenuItems();
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+});   
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', async () => {
