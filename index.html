@@ -603,7 +603,177 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // Your existing JavaScript code will go here
+     <script>
+    // Supabase Configuration
+    const supabaseUrl = 'https://lteeyruaulhvkymauhky.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0ZWV5cnVhdWxodmt5bWF1aGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODkyODcsImV4cCI6MjA4NTk2NTI4N30.B15ynuAhow4osDo5cU9IpsTVKay1pLv_CuevP0mV3Fc';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // DOM Elements
+    let allMenuItems = [];
+    const menuContainer = document.getElementById('menuContainer');
+    const searchInput = document.getElementById('searchInput');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+
+    // Mobile Navigation Toggle
+    hamburger.addEventListener('click', () => {
+        navLinks.classList.toggle('active');
+    });
+
+    // Close mobile menu when clicking a link
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.addEventListener('click', () => {
+            navLinks.classList.remove('active');
+        });
+    });
+
+    // Load Menu from Supabase
+    async function loadMenu() {
+        menuContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading menu...</div>';
+        
+        try {
+            const { data, error } = await supabase
+                .from('menu_items')
+                .select(`
+                    id,
+                    item_name,
+                    price,
+                    description,
+                    image_url,
+                    categories (name)
+                `)
+                .order('item_name');
+
+            if (error) throw error;
+
+            allMenuItems = data || [];
+            displayMenu(allMenuItems);
+            
+        } catch (error) {
+            console.error('Error loading menu:', error);
+            menuContainer.innerHTML = '<div class="no-items">Unable to load menu. Please try again later.</div>';
+        }
+    }
+
+    // Display Menu Items
+    function displayMenu(items) {
+        if (!items || items.length === 0) {
+            menuContainer.innerHTML = '<div class="no-items">No menu items available yet.</div>';
+            return;
+        }
+
+        menuContainer.innerHTML = items.map(item => `
+            <div class="menu-item" data-category="${item.categories?.name || 'Uncategorized'}">
+                ${item.image_url ? 
+                    `<img src="${item.image_url}" alt="${item.item_name}" loading="lazy">` : 
+                    `<img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="${item.item_name}">`
+                }
+                <div class="menu-item-content">
+                    <h3>${item.item_name}</h3>
+                    <p>${item.description || 'Delicious item from Bustan Cafe'}</p>
+                    <div class="item-footer">
+                        <span class="price">$${item.price.toFixed(2)}</span>
+                        <span class="category-tag">${item.categories?.name || 'Menu'}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Search Functionality
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        
+        if (!searchTerm) {
+            const activeFilter = document.querySelector('.filter-btn.active').dataset.category;
+            filterMenu(activeFilter);
+            return;
+        }
+
+        const filtered = allMenuItems.filter(item =>
+            item.item_name.toLowerCase().includes(searchTerm) ||
+            item.description?.toLowerCase().includes(searchTerm) ||
+            item.categories?.name.toLowerCase().includes(searchTerm)
+        );
+        
+        displayMenu(filtered);
+    });
+
+    // Filter by Category
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Update active button
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Filter menu
+            const category = button.dataset.category;
+            filterMenu(category);
+        });
+    });
+
+    function filterMenu(category) {
+        if (category === 'all') {
+            displayMenu(allMenuItems);
+        } else {
+            const filtered = allMenuItems.filter(item => 
+                item.categories?.name === category
+            );
+            displayMenu(filtered);
+        }
+    }
+
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            if (targetId === '#') return;
+            
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                window.scrollTo({
+                    top: targetElement.offsetTop - 80,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMenu();
+        
+        // Add active class to nav link based on scroll position
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            const sections = document.querySelectorAll('section');
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                const sectionHeight = section.clientHeight;
+                const sectionId = section.getAttribute('id');
+                
+                if (currentScroll >= sectionTop && currentScroll < sectionTop + sectionHeight) {
+                    document.querySelectorAll('.nav-links a').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+    });
+
+    // Add this function to handle Supabase errors more gracefully
+    function handleSupabaseError(error) {
+        console.error('Supabase Error:', error);
+        alert('There was an error connecting to the menu database. Please refresh the page.');
+    }
+</script>
     </script>
 </body>
 </html> 
