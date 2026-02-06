@@ -596,50 +596,153 @@
             }
         }
         
-        // Add item form
+               // === IMAGE UPLOAD CODE ===
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageUploadArea = document.getElementById('imageUploadArea');
+        
+        // Click upload area to trigger file input
+        imageUploadArea.addEventListener('click', () => {
+            console.log('Opening file picker...');
+            imageInput.click();
+        });
+        
+        // Show preview when file is selected
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            console.log('File selected:', file?.name, file?.size);
+            
+            if (file) {
+                // Check file size (max 2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('❌ Image too large! Max 2MB.');
+                    imageInput.value = ''; // Clear selection
+                    return;
+                }
+                
+                // Check file type
+                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                    alert('❌ Please select JPG, PNG, or GIF image');
+                    imageInput.value = '';
+                    return;
+                }
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    console.log('Preview loaded');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Add item form WITH IMAGE UPLOAD
         document.getElementById('addItemForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            console.log('Form submitted');
+            console.log('=== FORM SUBMISSION START ===');
             
             const itemName = document.getElementById('itemName').value;
             const itemPrice = document.getElementById('itemPrice').value;
             const itemCategory = document.getElementById('itemCategory').value;
             const itemDescription = document.getElementById('itemDescription').value;
+            const imageFile = imageInput.files[0];
             
             if (!itemName || !itemPrice || !itemCategory) {
                 alert('❌ Please fill: Item Name, Price, and Category');
                 return;
             }
             
+            // Show loading
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+            submitBtn.disabled = true;
+            
             try {
-                console.log('Adding item:', { itemName, itemPrice, itemCategory });
+                console.log('Item details:', { itemName, itemPrice, itemCategory });
                 
-                const { error } = await supabase
+                let imageUrl = null;
+                
+                // UPLOAD IMAGE IF SELECTED
+                if (imageFile) {
+                    console.log('Uploading image:', imageFile.name);
+                    
+                    // Create unique filename
+                    const fileExt = imageFile.name.split('.').pop();
+                    const fileName = `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+                    
+                    console.log('Uploading to bucket: menu-images, filename:', fileName);
+                    
+                    // Upload to Supabase Storage
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('menu-images')
+                        .upload(fileName, imageFile, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+                    
+                    if (uploadError) {
+                        console.error('❌ Storage upload error:', uploadError);
+                        // Continue without image - don't stop form submission
+                    } else {
+                        console.log('✅ Image uploaded:', uploadData);
+                        
+                        // Get public URL
+                        const { data: urlData } = supabase.storage
+                            .from('menu-images')
+                            .getPublicUrl(fileName);
+                        
+                        imageUrl = urlData.publicUrl;
+                        console.log('📷 Image URL:', imageUrl);
+                    }
+                } else {
+                    console.log('No image selected');
+                }
+                
+                // INSERT INTO DATABASE
+                console.log('Inserting into menu_items table...');
+                const { data, error } = await supabase
                     .from('menu_items')
                     .insert([{
                         item_name: itemName,
                         price: parseFloat(itemPrice),
                         category_id: itemCategory,
                         description: itemDescription,
-                        image_url: null
-                    }]);
+                        image_url: imageUrl
+                    }])
+                    .select(); // Get inserted data back
                 
                 if (error) {
-                    console.error('Insert error:', error);
-                    alert('❌ Database error: ' + error.message);
-                    return;
+                    console.error('❌ Database insert error:', error);
+                    throw new Error('Database error: ' + error.message);
                 }
                 
-                alert('✅ Item added successfully!');
+                console.log('✅ Item inserted:', data);
+                
+                alert('✅ Item added successfully!' + (imageFile ? '\n📷 Image uploaded' : ''));
+                
+                // Reset form
                 document.getElementById('addItemForm').reset();
+                imagePreview.style.display = 'none';
+                imagePreview.src = '';
+                imageInput.value = '';
+                
+                // Reload menu items
                 loadMenuItems();
                 
-                // Also refresh main site
-                console.log('Item added to database');
+                console.log('=== FORM SUBMISSION COMPLETE ===');
                 
             } catch (error) {
-                console.error('Submit error:', error);
+                console.error('❌ Form submission error:', error);
                 alert('❌ Error: ' + error.message);
+                
+            } finally {
+                // Restore button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
         
