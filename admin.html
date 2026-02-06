@@ -804,7 +804,7 @@
                         .insert([{
                             item_name: itemName,
                             price: parseFloat(itemPrice),
-                            category_id: itemCategory,
+                            category_id: parseInt(itemCategory),  // Convert string "1" to number 1
                             description: itemDescription,
                             image_url: imageUrl
                         }])
